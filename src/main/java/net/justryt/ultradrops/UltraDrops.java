@@ -5,6 +5,7 @@ import lombok.Getter;
 import net.justryt.ultradrops.cmd.MainCommand;
 import net.justryt.ultradrops.drops.DropsListener;
 import net.justryt.ultradrops.drops.DropsManager;
+import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class UltraDrops extends JavaPlugin {
@@ -16,6 +17,9 @@ public class UltraDrops extends JavaPlugin {
         plugin = this;
 
         saveDefaultConfig();
+
+        int pluginId = 35283;
+        Metrics metrics = new Metrics(this, pluginId);
 
         getServer().getPluginManager().registerEvents(new DropsListener(), this);
 

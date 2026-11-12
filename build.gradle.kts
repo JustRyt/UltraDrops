@@ -1,6 +1,7 @@
 plugins {
     id("java")
     id("io.freefair.lombok") version "9.8.3"
+    id("com.gradleup.shadow") version "9.3.1"
 }
 
 group = "net.justryt.ultradrops"
@@ -15,6 +16,7 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    implementation("org.bstats:bstats-bukkit:3.2.1")
 }
 
 java {
@@ -23,4 +25,14 @@ java {
 
 tasks.processResources {
     expand("version" to project.version)
+}
+
+tasks.shadowJar {
+    configurations = project.configurations.runtimeClasspath.map { setOf(it) }
+
+    dependencies {
+        exclude { it.moduleGroup != "org.bstats" }
+    }
+
+    relocate("org.bstats", project.group.toString())
 }
