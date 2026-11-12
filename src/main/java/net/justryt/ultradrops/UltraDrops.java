@@ -8,6 +8,8 @@ import net.justryt.ultradrops.drops.DropsManager;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.List;
+
 public class UltraDrops extends JavaPlugin {
     @Getter private static UltraDrops plugin;
     @Getter private static DropsManager dropsManager;
@@ -24,7 +26,7 @@ public class UltraDrops extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new DropsListener(), this);
 
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, handler -> {
-            handler.registrar().register(MainCommand.get(), "uds");
+            handler.registrar().register(MainCommand.get(), List.of("uds"));
         });
 
         dropsManager = new DropsManager(this);
