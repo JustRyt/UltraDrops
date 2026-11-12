@@ -1,0 +1,6 @@
+name: UltraDrops
+version: ${version}
+main: net.justryt.ultradrops.UltraDrops
+api-version: '1.21.11'
+folia-supported: true
+prefix: "[UltraDrops]"

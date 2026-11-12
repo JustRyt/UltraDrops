@@ -1,0 +1,84 @@
+drop-interval: 3600 # Time between two drop starts in seconds
+# The key is the time in seconds before the drop to send the message. Cannot be bigger than drop-interval
+timed-messages:
+  60: "<bold>A [DROP_DISPLAY] will spawn at X: [DROP_X], Z: [DROP_Z] in 60s.</bold>"
+  30: "<bold>A [DROP_DISPLAY] will spawn at X: [DROP_X], Z: [DROP_Z] in 30s.</bold>"
+drop-expire: 7200 # Time after drop disappears, it will automatically disappear after server restart.
+  
+
+# This plugin has the following variables for you to use inside loot table commands-
+#
+# [PLAYER_UUID] - UUID of the player
+# [PLAYER_NAME] - name of the player
+drops:
+  mythical:
+    display-name: "<b><blue>MYTHICAL</blue></b>"
+    rows: 3 # 1 - 6
+    loot-table:
+      air:
+        type: "VANILLA"
+        material: "AIR"
+        amount: "1"
+        weight: 100
+      coal:
+        type: "VANILLA"
+        material: "COAL"
+        amount: "5-10"
+        weight: 20
+      iron:
+        type: "VANILLA"
+        material: "IRON_INGOT"
+        amount: "3-7"
+        weight: 10
+      gold:
+        type: "VANILLA"
+        material: "GOLD_INGOT"
+        amount: "3-5"
+        weight: 7
+      diamond:
+        type: "VANILLA"
+        material: "DIAMOND"
+        amount: "1-3"
+        weight: 5
+      emerald:
+        type: "VANILLA"
+        material: "EMERALD"
+        amount: "1-2"
+        weight: 3
+      excalibur:
+        type: "CUSTOM"
+        stack:
+          ==: org.bukkit.inventory.ItemStack
+          v: 3839
+          type: "DIAMOND_SWORD"
+          meta:
+            ==: ItemMeta
+            meta-type: UNSPECIFIC
+            display-name: '{"text":"Excalibur","color":"gold","italic":false}'
+            lore:
+              - '{"text":"A legendary blade.","color":"gray"}'
+            enchants:
+              DAMAGE_ALL: 5
+        weight: 1
+      bloodsword:
+        type: "CUSTOM_COMMAND"
+        display-item:
+          name: "Blood Sword"
+          material: "IRON_SWORD"
+          lore:
+            - "A good sword"
+            - "A better sword"
+          glint: true
+        give-command: "xyz give [PLAYER_NAME] bloodsword"
+        weight: 1
+
+drop-animation:
+  speed: 1
+
+# Only works in worlds with open skies (e.g. won't work in the nether)
+drop-worlds:
+  - world: world
+    center:
+      x: 0
+      z: 0
+    extent: 5 # Chunks to each cardinal direction of the center where a drop can spawn.
