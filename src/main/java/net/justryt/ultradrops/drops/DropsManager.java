@@ -2,6 +2,10 @@ package net.justryt.ultradrops.drops;
 
 import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import net.justryt.ultradrops.UltraDrops;
+import net.justryt.ultradrops.drops.configs.DropConfig;
+import net.justryt.ultradrops.drops.configs.DropWorldConfig;
+import net.justryt.ultradrops.drops.loot.DropInventory;
+import net.justryt.ultradrops.drops.loot.LootTable;
 import net.justryt.ultradrops.utils.Utils;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -9,19 +13,21 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class DropsManager {
     private int dropInterval;
     private ScheduledTask dropsTask;
 
-    private final HashMap<Integer, String> timedMessages = new HashMap<>();
-    private final HashMap<String, DropConfig> dropConfigs = new HashMap<>();
-    private final HashSet<DropWorldConfig> dropWorldConfigs = new HashSet<>();
-    private final HashMap<UUID, DropInventory> ongoingDrops = new HashMap<>();
-    private final HashSet<Runnable> dropCleanupTasks = new HashSet<>();
+    private final Map<Integer, String> timedMessages = new HashMap<>();
+    private final Map<String, DropConfig> dropConfigs = new HashMap<>();
+    private final Set<DropWorldConfig> dropWorldConfigs = new HashSet<>();
+    private final Map<UUID, DropInventory> ongoingDrops = new ConcurrentHashMap<>();
+    private final Set<Runnable> dropCleanupTasks = ConcurrentHashMap.newKeySet();
 
     public DropsManager(@NotNull UltraDrops plugin) {
         load(plugin.getConfig());
@@ -29,52 +35,22 @@ public class DropsManager {
 
     public void startDropTask() {
         dropsTask = Bukkit.getGlobalRegionScheduler().runAtFixedRate(UltraDrops.getPlugin(), task -> {
-            dropWorldConfigs.forEach(worldCfg -> {
+            dropWorldConfigs.forEach(worldConfig -> {
                 if (dropConfigs.isEmpty()) return;
 
                 var dropTypes = new ArrayList<>(dropConfigs.keySet());
                 var randomIndex = ThreadLocalRandom.current().nextInt(dropTypes.size());
                 var randomDropConfig = dropConfigs.get(dropTypes.get(randomIndex));
 
-                startNewDrop(randomDropConfig, worldCfg);
+                startNewDrop(randomDropConfig, worldConfig);
             });
         }, 1L, dropInterval * 20L);
     }
 
     public void startNewDrop(@NotNull DropConfig dropConfig, @NotNull DropWorldConfig dropWorldConfig) {
-        Utils.getRandomLocation(dropWorldConfig.world(), dropWorldConfig.center(), dropWorldConfig.extent(), location -> {
-            var dropUUID = UUID.randomUUID();
-            var timedMessagesComp = timedMessages.entrySet().stream()
-                    .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> Utils.mm(
-                                    entry.getValue()
-                                            .replace("[DROP_DISPLAY]", dropConfig.displayName())
-                                            .replace("[DROP_X]", String.valueOf(location.getBlockX()))
-                                            .replace("[DROP_Z]", String.valueOf(location.getBlockZ()))
-                            )
-                    ));
-
-            var drop = new Drop(
-                    UltraDrops.getPlugin(),
-                    dropUUID,
-                    Utils.mm(dropConfig.displayName()),
-                    location,
-                    timedMessagesComp,
-                    dropInterval,
-                    new AtomicBoolean(false)
-            );
-
-            drop.start();
-            ongoingDrops.put(dropUUID, new DropInventory(Utils.mm(dropConfig.displayName()), dropConfig.lootTable(), dropConfig.rows()));
-
-            Runnable cleanup = drop::cleanup;
-
-            dropCleanupTasks.add(cleanup);
-            Bukkit.getGlobalRegionScheduler().runDelayed(UltraDrops.getPlugin(), _ -> {
-                if (dropCleanupTasks.contains(cleanup)) cleanup.run();
-            }, UltraDrops.getPlugin().getConfig().getInt("drop-expire", 7200) * 20L);
-        });
+        Utils.getRandomLocation(dropWorldConfig.world(), dropWorldConfig.center(), dropWorldConfig.extent(), location ->
+                spawnDropAt(dropConfig, location, dropInterval)
+        );
     }
 
     public Optional<DropInventory> getDropInventory(@NotNull UUID dropUUID) {
@@ -141,7 +117,7 @@ public class DropsManager {
     }
 
     public void cleanup() {
-        dropCleanupTasks.forEach(Runnable::run);
+        new ArrayList<>(dropCleanupTasks).forEach(Runnable::run);
         dropCleanupTasks.clear();
 
         if (dropsTask != null) dropsTask.cancel();
@@ -153,5 +129,62 @@ public class DropsManager {
 
     public Optional<DropConfig> getDropConfig(@NotNull String dropType) {
         return Optional.ofNullable(dropConfigs.get(dropType));
+    }
+
+    public void spawnDropAt(@NotNull DropConfig dropConfig, @NotNull Location location, int delaySeconds) {
+        var dropUUID = UUID.randomUUID();
+        var timedMessagesComp = timedMessages.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> Utils.mm(
+                                entry.getValue()
+                                        .replace("[DROP_DISPLAY]", dropConfig.displayName())
+                                        .replace("[DROP_X]", String.valueOf(location.getBlockX()))
+                                        .replace("[DROP_Z]", String.valueOf(location.getBlockZ()))
+                        )
+                ));
+
+        var dropInv = new DropInventory(Utils.mm(dropConfig.displayName()), dropConfig.lootTable(), dropConfig.rows());
+        ongoingDrops.put(dropUUID, dropInv);
+
+        var dropRef = new AtomicReference<Drop>();
+
+        Runnable cleanup = new Runnable() {
+            @Override
+            public void run() {
+                if (!dropCleanupTasks.remove(this)) return;
+
+                ongoingDrops.remove(dropUUID);
+
+                var activeDrop = dropRef.get();
+                if (activeDrop != null) {
+                    activeDrop.cleanup();
+                }
+
+                if (UltraDrops.getPlugin().isEnabled()) {
+                    new ArrayList<>(dropInv.getInventory().getViewers()).forEach(viewer ->
+                            viewer.getScheduler().run(UltraDrops.getPlugin(), _ -> viewer.closeInventory(), null)
+                    );
+                }
+            }
+        };
+
+        var drop = new Drop(
+                UltraDrops.getPlugin(),
+                dropUUID,
+                Utils.mm(dropConfig.displayName()),
+                location,
+                timedMessagesComp,
+                delaySeconds,
+                cleanup
+        );
+
+        dropRef.set(drop);
+        dropCleanupTasks.add(cleanup);
+        drop.start();
+    }
+
+    public Set<String> getDropTypes() {
+        return Collections.unmodifiableSet(dropConfigs.keySet());
     }
 }

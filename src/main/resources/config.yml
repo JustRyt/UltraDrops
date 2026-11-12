@@ -1,84 +1,166 @@
-drop-interval: 3600 # Time between two drop starts in seconds
-# The key is the time in seconds before the drop to send the message. Cannot be bigger than drop-interval
-timed-messages:
-  60: "<bold>A [DROP_DISPLAY] will spawn at X: [DROP_X], Z: [DROP_Z] in 60s.</bold>"
-  30: "<bold>A [DROP_DISPLAY] will spawn at X: [DROP_X], Z: [DROP_Z] in 30s.</bold>"
-drop-expire: 7200 # Time after drop disappears, it will automatically disappear after server restart.
-  
+# ============================================================================ #
+#                             UltraDrops Configuration                         #
+# ============================================================================ #
+# All text formatting in this config uses Adventure MiniMessage!
+# You can easily design gradients, hover text, and colors using Paper's
+# official WebUI tool: https://webui.advntr.dev/
+# MiniMessage Documentation: https://docs.advntr.dev/minimessage/format.html
+# ============================================================================ #
 
-# This plugin has the following variables for you to use inside loot table commands-
+# Time (in seconds) between each automatic drop wave across configured worlds.
+# 3600 seconds = 1 hour.
+drop-interval: 3600
+
+# Time (in seconds) before a landed drop chest despawns and clears its loot.
+# Note: The timer starts ONLY after the chest makes landfall.
+# All active drops automatically despawn upon server restart or /ultradrops reload.
+drop-expire: 7200
+
+# Countdown broadcasts sent before the drop begins falling from the sky.
+# The key is the number of seconds remaining before the drop spawns.
+# Note: Keys cannot be larger than 'drop-interval'.
 #
-# [PLAYER_UUID] - UUID of the player
-# [PLAYER_NAME] - name of the player
+# Available Placeholders:
+#   [DROP_DISPLAY] - The 'display-name' of the drop tier being spawned
+#   [DROP_X]       - The X coordinate where the drop will land
+#   [DROP_Z]       - The Z coordinate where the drop will land
+timed-messages:
+  300: "<gray>[<aqua>UltraDrops</aqua>]</gray> A [DROP_DISPLAY] <gray>drop will arrive at</gray> <yellow>X: [DROP_X], Z: [DROP_Z]</yellow> <gray>in</gray> <green>5 minutes</green><gray>!</gray>"
+  60: "<gray>[<aqua>UltraDrops</aqua>]</gray> <bold>A [DROP_DISPLAY] will spawn at <yellow>X: [DROP_X], Z: [DROP_Z]</yellow> in <red>60s</red>!</bold>"
+  30: "<gray>[<aqua>UltraDrops</aqua>]</gray> <bold>A [DROP_DISPLAY] will spawn at <yellow>X: [DROP_X], Z: [DROP_Z]</yellow> in <red>30s</red>!</bold>"
+  10: "<gray>[<aqua>UltraDrops</aqua>]</gray> <bold>A [DROP_DISPLAY] is dropping in <dark_red>10s</dark_red>!</bold>"
+
+# Broadcast sent the exact moment the chest hits the ground and becomes lootable.
+# Set to "" to disable.
+#
+# Available Placeholders:
+#   [DROP_X] - The X coordinate of the landed chest
+#   [DROP_Y] - The Y coordinate of the landed chest
+#   [DROP_Z] - The Z coordinate of the landed chest
+landfall-message: "<gray>[<aqua>UltraDrops</aqua>]</gray> <green><bold>LANDFALL!</bold></green> <gray>The supply drop has landed at</gray> <yellow>X: [DROP_X], Y: [DROP_Y], Z: [DROP_Z]</yellow><gray>!</gray>"
+
+# Controls how fast the supply drop falls from build height to the ground.
+drop-animation:
+  # Blocks per second (1 - 20).
+  # 1 = 1 block/sec (slow parachute style), 20 = 20 blocks/sec (1 block per tick).
+  speed: 4
+
+# Worlds where automatic drops will occur.
+# Note: Only works properly in worlds with open skies (avoid the Nether!).
+drop-worlds:
+  - world: "world"
+    center:
+      x: 0
+      z: 0
+    # Radius in CHUNKS (1 chunk = 16 blocks) in each cardinal direction from center.
+    # Example: extent: 25 means a 50x50 chunk area (-400 to +415 on X and Z).
+    extent: 25
+
+# ============================================================================ #
+#                                 Drop Tiers                                   #
+# ============================================================================ #
+# Each drop rolls a random item from its 'loot-table' for EVERY slot in the chest.
+# Tip: Include an "AIR" reward with a high weight so the chest isn't 100% full!
+#
+# Reward Types:
+#   1. VANILLA - Standard or custom-styled Minecraft items.
+#                Required: material, amount ("1" or "min-max"), weight
+#                Optional: name (MiniMessage), lore (MiniMessage list),
+#                          glint (true/false), enchants (enchant_id: level)
+#
+#   2. CUSTOM_COMMAND - Displays a custom GUI item; runs a console command when clicked.
+#                       Placeholders: [PLAYER_NAME], [PLAYER_UUID]
+# ============================================================================ #
 drops:
+  common:
+    display-name: "<bold><green>COMMON SUPPLY DROP</green></bold>"
+    rows: 3 # Chest GUI size (1 - 6 rows)
+    loot-table:
+      empty_slot:
+        type: "VANILLA"
+        material: "AIR"
+        amount: "1"
+        weight: 120
+      coal:
+        type: "VANILLA"
+        material: "COAL"
+        amount: "5-12"
+        weight: 30
+      iron:
+        type: "VANILLA"
+        material: "IRON_INGOT"
+        amount: "3-8"
+        weight: 20
+      golden_apple:
+        type: "VANILLA"
+        material: "GOLDEN_APPLE"
+        amount: "1-2"
+        weight: 5
+      xp_bottle_pack:
+        type: "CUSTOM_COMMAND"
+        display-item:
+          name: "<aqua>Experience Bundle</aqua>"
+          material: "EXPERIENCE_BOTTLE"
+          lore:
+            - "<gray>Click to claim</gray> <green>500 XP</green><gray>!</gray>"
+          glint: true
+        give-command: "xp add [PLAYER_NAME] 500 points"
+        weight: 5
+
   mythical:
-    display-name: "<b><blue>MYTHICAL</blue></b>"
-    rows: 3 # 1 - 6
+    display-name: "<bold><gradient:#5555FF:#FF55FF>MYTHICAL DROP</gradient></bold>"
+    rows: 4 # Chest GUI size (1 - 6 rows)
     loot-table:
       air:
         type: "VANILLA"
         material: "AIR"
         amount: "1"
         weight: 100
-      coal:
-        type: "VANILLA"
-        material: "COAL"
-        amount: "5-10"
-        weight: 20
       iron:
         type: "VANILLA"
         material: "IRON_INGOT"
-        amount: "3-7"
-        weight: 10
+        amount: "4-10"
+        weight: 15
       gold:
         type: "VANILLA"
         material: "GOLD_INGOT"
-        amount: "3-5"
-        weight: 7
+        amount: "3-6"
+        weight: 10
       diamond:
         type: "VANILLA"
         material: "DIAMOND"
         amount: "1-3"
-        weight: 5
+        weight: 6
       emerald:
         type: "VANILLA"
         material: "EMERALD"
         amount: "1-2"
-        weight: 3
+        weight: 4
+      netherite_scrap:
+        type: "VANILLA"
+        material: "NETHERITE_SCRAP"
+        amount: "1"
+        weight: 2
       excalibur:
-        type: "CUSTOM"
-        stack:
-          ==: org.bukkit.inventory.ItemStack
-          v: 3839
-          type: "DIAMOND_SWORD"
-          meta:
-            ==: ItemMeta
-            meta-type: UNSPECIFIC
-            display-name: '{"text":"Excalibur","color":"gold","italic":false}'
-            lore:
-              - '{"text":"A legendary blade.","color":"gray"}'
-            enchants:
-              DAMAGE_ALL: 5
+        type: "VANILLA"
+        material: "DIAMOND_SWORD"
+        amount: "1"
+        name: "<gold><bold>Excalibur</bold></gold>"
+        lore:
+          - "<gray>A legendary blade forged in the skies.</gray>"
+        enchants:
+          sharpness: 5
+          unbreaking: 3
+          fire_aspect: 2
         weight: 1
       bloodsword:
         type: "CUSTOM_COMMAND"
         display-item:
-          name: "Blood Sword"
-          material: "IRON_SWORD"
+          name: "<dark_red><bold>Blood Sword</bold></dark_red>"
+          material: "NETHERITE_SWORD"
           lore:
-            - "A good sword"
-            - "A better sword"
+            - "<gray>A good sword</gray>"
+            - "<red>A better sword</red>"
           glint: true
         give-command: "xyz give [PLAYER_NAME] bloodsword"
         weight: 1
-
-drop-animation:
-  speed: 1
-
-# Only works in worlds with open skies (e.g. won't work in the nether)
-drop-worlds:
-  - world: world
-    center:
-      x: 0
-      z: 0
-    extent: 5 # Chunks to each cardinal direction of the center where a drop can spawn.

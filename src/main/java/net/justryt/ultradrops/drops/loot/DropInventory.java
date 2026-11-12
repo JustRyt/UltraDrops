@@ -1,4 +1,4 @@
-package net.justryt.ultradrops.drops;
+package net.justryt.ultradrops.drops.loot;
 
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
@@ -11,7 +11,8 @@ public class DropInventory implements InventoryHolder {
     @Getter private final Inventory inventory;
 
     public DropInventory(@NotNull Component name, @NotNull LootTable lootTable, int rows) {
-        inventory = Bukkit.createInventory(this, rows * 9, name);
+        int clampedRows = Math.clamp(rows, 1, 6);
+        inventory = Bukkit.createInventory(this, clampedRows * 9, name);
 
         for (int i = 0; i < rows * 9; i++) {
             inventory.setItem(i, lootTable.rollItem());

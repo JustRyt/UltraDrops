@@ -1,4 +1,4 @@
-package net.justryt.ultradrops.drops;
+package net.justryt.ultradrops.drops.configs;
 
 import org.bukkit.Location;
 import org.bukkit.World;

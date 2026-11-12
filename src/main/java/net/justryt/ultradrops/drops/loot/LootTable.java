@@ -1,19 +1,23 @@
-package net.justryt.ultradrops.drops;
+package net.justryt.ultradrops.drops.loot;
 
+import io.papermc.paper.registry.RegistryAccess;
+import io.papermc.paper.registry.RegistryKey;
 import net.justryt.ultradrops.UltraDrops;
 import net.justryt.ultradrops.drops.items.CustomCommandItem;
-import net.justryt.ultradrops.drops.items.CustomItem;
 import net.justryt.ultradrops.drops.items.RewardItem;
 import net.justryt.ultradrops.drops.items.VanillaItem;
 import net.justryt.ultradrops.utils.Utils;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class LootTable {
@@ -21,6 +25,7 @@ public class LootTable {
 
     public LootTable(@NotNull ConfigurationSection section) {
         var rewardKeys = section.getKeys(false);
+        var enchantmentRegistry = RegistryAccess.registryAccess().getRegistry(RegistryKey.ENCHANTMENT);
 
         for (var rewardKey : rewardKeys) {
             var rewardSection = section.getConfigurationSection(rewardKey);
@@ -37,8 +42,9 @@ public class LootTable {
 
             int weight = rewardSection.getInt("weight");
 
-            if (weight == 0) {
-                UltraDrops.getPlugin().getLogger().warning("Weight set to zero for reward with key: " + rewardKey);
+            if (weight <= 0) {
+                UltraDrops.getPlugin().getLogger().warning("Weight must be greater than zero for reward with key: " + rewardKey);
+                continue;
             }
 
             switch (rewardType) {
@@ -56,38 +62,66 @@ public class LootTable {
                     int bound;
 
                     try {
-                        var amount = rewardSection.getString("amount");
-
-                        if (amount == null) throw new RuntimeException();
-
+                        var amount = rewardSection.getString("amount", "1");
                         var split = amount.split("-");
 
-                        if (split.length == 0) throw new RuntimeException();
-                        else if (split.length == 1) {
-                            origin = Integer.parseInt(split[0]);
+                        if (split.length == 1) {
+                            origin = Integer.parseInt(split[0].trim());
                             bound = origin;
                         } else if (split.length == 2) {
-                            origin = Integer.parseInt(split[0]);
-                            bound = Integer.parseInt(split[1]);
-                        } else throw new RuntimeException();
+                            origin = Integer.parseInt(split[0].trim());
+                            bound = Integer.parseInt(split[1].trim());
+                        } else {
+                            throw new IllegalArgumentException();
+                        }
                     } catch (Exception _) {
-                        UltraDrops.getPlugin().getLogger().warning("Invalid or no amount set for reward with key: " + rewardKey);
+                        UltraDrops.getPlugin().getLogger().warning("Invalid amount set for reward with key: " + rewardKey);
                         continue;
                     }
 
-                    var item = new VanillaItem(material, origin, bound);
-                    rewards.put(item, weight);
-                }
-                case CUSTOM -> {
-                    var itemStack = rewardSection.getItemStack("stack");
+                    var template = new ItemStack(material);
 
-                    if (itemStack == null) {
-                        UltraDrops.getPlugin().getLogger().warning("Invalid or no itemstack set for custom reward with key: " + rewardKey);
-                        continue;
+                    if (!material.isAir()) {
+                        var rawName = rewardSection.getString("name");
+                        var rawLore = rewardSection.getStringList("lore");
+                        boolean glint = rewardSection.getBoolean("glint", false);
+                        var enchantsSection = rewardSection.getConfigurationSection("enchants");
+
+                        template.editMeta(meta -> {
+                            if (rawName != null && !rawName.isBlank()) {
+                                meta.displayName(Utils.mm(rawName));
+                            }
+
+                            if (!rawLore.isEmpty()) {
+                                var loreComponents = new ArrayList<Component>(rawLore.size());
+                                rawLore.forEach(line -> loreComponents.add(Utils.mm(line)));
+                                meta.lore(loreComponents);
+                            }
+
+                            if (glint) {
+                                meta.setEnchantmentGlintOverride(true);
+                            }
+
+                            if (enchantsSection != null) {
+                                for (String enchantKey : enchantsSection.getKeys(false)) {
+                                    int level = enchantsSection.getInt(enchantKey, 1);
+                                    NamespacedKey key = NamespacedKey.fromString(enchantKey.toLowerCase(Locale.ROOT));
+                                    Enchantment enchantment = (key != null) ? enchantmentRegistry.get(key) : null;
+
+                                    if (enchantment == null) {
+                                        UltraDrops.getPlugin().getLogger().warning(
+                                                "Invalid enchantment '" + enchantKey + "' for reward with key: " + rewardKey
+                                        );
+                                        continue;
+                                    }
+
+                                    meta.addEnchant(enchantment, level, true);
+                                }
+                            }
+                        });
                     }
 
-                    var item = new CustomItem(itemStack);
-
+                    var item = new VanillaItem(template, Math.min(origin, bound), Math.max(origin, bound));
                     rewards.put(item, weight);
                 }
                 case CUSTOM_COMMAND -> {
@@ -173,7 +207,6 @@ public class LootTable {
 
     enum RewardType {
         VANILLA,
-        CUSTOM,
         CUSTOM_COMMAND
     }
 }
