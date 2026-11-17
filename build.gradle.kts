@@ -27,12 +27,23 @@ tasks.processResources {
     expand("version" to project.version)
 }
 
+tasks.jar {
+    enabled = false
+}
+
 tasks.shadowJar {
-    configurations = project.configurations.runtimeClasspath.map { setOf(it) }
+    archiveClassifier.set("")
+    relocate("org.bstats", "${project.group}.bstats")
+}
 
-    dependencies {
-        exclude { it.moduleGroup != "org.bstats" }
-    }
+tasks.build {
+    dependsOn(tasks.shadowJar)
+}
 
-    relocate("org.bstats", project.group.toString())
+tasks.compileJava {
+    mustRunAfter(tasks.clean)
+}
+
+tasks.processResources {
+    mustRunAfter(tasks.clean)
 }
