@@ -16,7 +16,7 @@ public class MainCommand {
 
         root.then(Commands
                 .literal("reload")
-                .requires(src -> src.getSender().isOp())
+                .requires(src -> src.getSender().hasPermission("uds.reload"))
                 .executes(_ -> {
                     UltraDrops.getDropsManager().cleanup();
                     UltraDrops.getPlugin().reloadConfig();
@@ -28,6 +28,7 @@ public class MainCommand {
 
         root.then(Commands
                 .literal("spawn")
+                .requires(src -> src.getSender().hasPermission("uds.spawn"))
                 .then(Commands.argument("type", StringArgumentType.word())
                         .suggests((ctx, builder) -> {
                             UltraDrops.getDropsManager().getDropTypes().forEach(builder::suggest);
