@@ -34,10 +34,10 @@
 
 ## Commands & Permissions
 
-| Command | Alias | Description | Access |
+| Command | Alias | Description | Permission |
 | :--- | :--- | :--- | :--- |
-| `/ultradrops spawn <type>` | `/uds spawn <type>` | Immediately spawns a supply drop of the specified tier at your current location. | In-game Players |
-| `/ultradrops reload` | `/uds reload` | Cleans up active drops and reloads `config.yml`. | Server Operators (`OP`) |
+| `/ultradrops spawn <type>` | `/uds spawn <type>` | Immediately spawns a supply drop of the specified tier at your current location. | `uds.spawn` |
+| `/ultradrops reload` | `/uds reload` | Cleans up active drops and reloads `config.yml`. | `uds.reload` |
 
 ---
 
@@ -47,3 +47,6 @@
 2. Place the `.jar` file into your server's `/plugins/` directory.
 3. Restart your server to generate the default `config.yml`.
 4. Edit `/plugins/UltraDrops/config.yml` to customize your drop tiers, worlds, and loot tables, then run `/ultradrops reload`.
+
+## Facing a problem?
+Open an issue on [Github](https://github.com/JustRyt/UltraDrops/issues)
